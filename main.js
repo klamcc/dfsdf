@@ -5,6 +5,8 @@ const weatherInfo = document.querySelector('.weather-info')
 const suggestions = document.querySelector('.suggestions')
 const bookmarksButton = document.querySelector('.bookmarks-button')
 const bookmarks = document.querySelector('.bookmarks')
+let timeout
+let suggestionList
 let bookmark = document.querySelector('.bookmark')
 
 window.onload = () => { navigator.geolocation.getCurrentPosition(renderLocation) }
@@ -54,14 +56,18 @@ function fetchByName(name) {
         })
 }
 
+function fetchByCode(code){
+    
+}
+
 search.addEventListener('input', () => {
-    setTimeout(fetchCities(), 1000)
+    clearTimeout(timeout)
+    timeout = setTimeout(fetchCities, 500)
 })
 
 function fetchCities() {
     if (search.value) {
-        suggestions.classList.remove('hide')
-        fetch(`https://wft-geo-db.p.rapidapi.com/v1/geo/cities?namePrefix=${search.value}`, options)
+        fetch(`https://wft-geo-db.p.rapidapi.com/v1/geo/cities?namePrefix=${search.value}&sort=-population`, options)
             .catch(error => Promise.reject(error))
             .then(res => {
                 if (!res.ok) {
@@ -73,6 +79,7 @@ function fetchCities() {
                 }
             })
             .then(res => {
+                suggestionList = []
                 suggestions.innerHTML = ''
                 console.log('clear')
                 res.data.map(city => {
@@ -82,15 +89,23 @@ function fetchCities() {
                                 return Promise.reject(res)
                             }
                             else {
-                                console.log(city.name)
-                                suggestions.innerHTML += `<div onclick='suggestion(this)'>${city.name},${city.countryCode}</div>`
+                                if (!suggestionList.includes(`${city.name},${city.country}`)){
+                                    suggestions.classList.remove('hide')
+                                    console.log(city.name)
+                                    suggestions.innerHTML += `<div onclick='suggestion(this,${city.countryCode})'>${city.name},${city.country}</div>`
+                                    suggestionList.push(`${city.name},${city.country}`)
+                                }
                             }
 
                         })
 
                 })
+                if (suggestions.innerHTML==''){
+                    suggestions.classList.add('hide')
+                }
             }).catch(error => {
-                setTimeout(fetchCities(), 1000)
+                clearTimeout()
+                timeout = setTimeout(fetchCities, 500)
             })
     }
     else {
@@ -98,9 +113,9 @@ function fetchCities() {
     }
 }
 
-function suggestion(elem) {
+function suggestion(elem,code) {
     search.value = elem.innerHTML
-    fetchByName(elem.innerHTML)
+    fetchByName(elem.innerHTML,code)
     suggestions.innerHTML = ''
     suggestions.classList.add('hide')
 }
